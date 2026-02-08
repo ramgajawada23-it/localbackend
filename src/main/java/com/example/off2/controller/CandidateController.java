@@ -1,49 +1,56 @@
 package com.example.off2.controller;
 
+import com.example.off2.dto.CandidateResponseDTO;
 import com.example.off2.model.Candidate;
 import com.example.off2.model.FamilyMember;
-import com.example.off2.repository.CandidateRepository;
+import com.example.off2.service.CandidateService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/candidates")
-@CrossOrigin(origins = "*")
+@RequestMapping("/api/candidates")
+@CrossOrigin(
+    origins = "http://127.0.0.1:5500",
+    allowedHeaders = "*",
+    methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS}
+)
 public class CandidateController {
 
-    private final CandidateRepository candidateRepository;
+    private final CandidateService candidateService;
 
-    public CandidateController(CandidateRepository candidateRepository) {
-        this.candidateRepository = candidateRepository;
+    public CandidateController(CandidateService candidateService) {
+        this.candidateService = candidateService;
     }
 
-    // ================= Save Candidate + Family =================
+    // ================= CREATE Candidate + Family =================
     @PostMapping
     @Transactional
-    public Candidate addCandidate(@RequestBody Candidate candidate) {
+    public ResponseEntity<Candidate> createCandidate(@RequestBody Candidate candidate) {
 
-        // ✅ Link family members to candidate
+        // 🔗 Ensure bidirectional mapping
         if (candidate.getFamilyMembers() != null) {
-            for (FamilyMember fm : candidate.getFamilyMembers()) {
-                fm.setCandidate(candidate);
+            for (FamilyMember member : candidate.getFamilyMembers()) {
+                member.setCandidate(candidate);
             }
         }
 
-        return candidateRepository.save(candidate);
+        Candidate savedCandidate = candidateService.saveCandidate(candidate);
+        return new ResponseEntity<>(savedCandidate, HttpStatus.CREATED);
     }
 
-    // ================= GET : Fetch All Candidates =================
+    // ================= GET ALL Candidates (MASKED RESPONSE) =================
     @GetMapping
-    public List<Candidate> getAllCandidates() {
-        return candidateRepository.findAll();
+    public ResponseEntity<List<CandidateResponseDTO>> getAllCandidates() {
+        return ResponseEntity.ok(candidateService.getAllCandidates());
     }
 
-    // ================= GET : Fetch Single Candidate =================
+    // ================= GET Candidate by ID (MASKED RESPONSE) =================
     @GetMapping("/{id}")
-    public Candidate getCandidateById(@PathVariable Long id) {
-        return candidateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Candidate not found"));
+    public ResponseEntity<CandidateResponseDTO> getCandidateById(@PathVariable Long id) {
+        return ResponseEntity.ok(candidateService.getCandidateById(id));
     }
 }
